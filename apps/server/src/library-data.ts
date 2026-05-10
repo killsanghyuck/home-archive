@@ -7,6 +7,13 @@ import { rowToPhotoSummary, type PhotoRow } from './photos.js';
 
 const FALLBACK_PROVIDERS = [
   {
+    id: 'mock-local',
+    kind: 'mock' as const,
+    label: 'Mock AI (로컬)',
+    model: 'mock-family-summary-v1',
+    status: 'connected' as const
+  },
+  {
     id: 'claude-default',
     kind: 'claude' as const,
     label: 'Claude',
@@ -151,7 +158,8 @@ export function getLibraryHome(db: HomeArchiveDb): LibraryHome {
 
   const summaries = db
     .prepare(
-      `SELECT id, generated_at, title, body, provider_id
+      `SELECT id, generated_at, title, body, provider_id, provider_kind,
+              scope_type, scope_id, photo_count
        FROM ai_summaries WHERE family_id = ?
        ORDER BY datetime(generated_at) DESC LIMIT 5`
     )
@@ -161,6 +169,10 @@ export function getLibraryHome(db: HomeArchiveDb): LibraryHome {
     title: string;
     body: string;
     provider_id: string;
+    provider_kind: 'mock' | 'claude' | 'openai' | 'ollama';
+    scope_type: 'week' | 'month' | 'custom';
+    scope_id: string;
+    photo_count: number;
   }>;
 
   return {
@@ -171,7 +183,11 @@ export function getLibraryHome(db: HomeArchiveDb): LibraryHome {
       generatedAt: s.generated_at,
       title: s.title,
       body: s.body,
-      providerId: s.provider_id
+      providerId: s.provider_id,
+      providerKind: s.provider_kind,
+      scopeType: s.scope_type,
+      scopeId: s.scope_id,
+      photoCount: s.photo_count
     })),
     family: family.map((m) => ({
       id: m.id,

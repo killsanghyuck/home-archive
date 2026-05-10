@@ -14,7 +14,17 @@ export interface AiHighlight {
   title: string;
   body: string;
   providerId: string;
+  providerKind: AiProvider['kind'];
+  scopeType: 'week' | 'month' | 'custom';
+  scopeId: string;
+  photoCount: number;
 }
+
+export interface GenerateMonthlySummaryRequest {
+  month: string;
+}
+
+export type GenerateMonthlySummaryResponse = AiHighlight;
 
 export interface FamilyTimelineDay {
   date: string;

@@ -10,6 +10,7 @@ export interface HomePageProps {
   library: LibraryHome;
   loadError?: string | null;
   onUploaded?: (photo: UploadPhotoResponse) => void;
+  onGenerateMonthlySummary?: (month: string) => Promise<void> | void;
 }
 
 const collections = [
@@ -149,7 +150,8 @@ function CollectionsCard(): JSX.Element {
 export function HomePage({
   library,
   loadError,
-  onUploaded
+  onUploaded,
+  onGenerateMonthlySummary
 }: HomePageProps): JSX.Element {
   return (
     <div className="workspace">
@@ -196,7 +198,11 @@ export function HomePage({
       <main className="workspace__grid">
         <div className="workspace__primary">
           <AiSummaryDesignCard photoCount={library.recentPhotos.length} />
-          <AiHighlightsCard highlights={library.highlights} />
+          <AiHighlightsCard
+            highlights={library.highlights}
+            latestMonth={library.timelineMonths[0]}
+            onGenerateMonthlySummary={onGenerateMonthlySummary}
+          />
           <div id="timeline-card">
             <TimelineCard months={library.timelineMonths} />
           </div>

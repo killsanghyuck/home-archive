@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { HomePage } from '../src/pages/HomePage.js';
 import type { LibraryHome } from '@home-archive/shared';
 
@@ -21,7 +22,11 @@ const sampleLibrary: LibraryHome = {
       generatedAt: '2026-05-09T09:00:00Z',
       title: '이번 주 가족 하이라이트',
       body: '준이가 자전거를 처음 탄 주말이었어요.',
-      providerId: 'claude-default'
+      providerId: 'claude-default',
+      providerKind: 'claude',
+      scopeType: 'week',
+      scopeId: '2026-W19',
+      photoCount: 1
     }
   ],
   family: [
@@ -108,6 +113,35 @@ describe('HomePage', () => {
     render(<HomePage library={sampleLibrary} />);
     const card = screen.getByRole('region', { name: /AI 요약/ });
     expect(within(card).getByText(/자전거를 처음 탄/)).toBeInTheDocument();
+  });
+
+  it('lets the user generate a mock monthly AI summary for the latest timeline month', async () => {
+    const user = userEvent.setup();
+    const onGenerateMonthlySummary = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <HomePage
+        library={{ ...sampleLibrary, highlights: [] }}
+        onGenerateMonthlySummary={onGenerateMonthlySummary}
+      />
+    );
+
+    const card = screen.getByRole('region', { name: /AI 요약/ });
+    await user.click(within(card).getByRole('button', { name: /2024년 12월 AI 요약 만들기/ }));
+
+    expect(onGenerateMonthlySummary).toHaveBeenCalledWith('2024-12');
+  });
+
+  it('shows a friendly message when there is no month available for AI summary generation', () => {
+    render(
+      <HomePage
+        library={{ ...sampleLibrary, highlights: [], timelineMonths: [] }}
+      />
+    );
+
+    const card = screen.getByRole('region', { name: /AI 요약/ });
+    expect(within(card).getByText(/사진을 올리면 월별 AI 요약을 만들 수 있어요/)).toBeInTheDocument();
+    expect(within(card).queryByRole('button', { name: /AI 요약 만들기/ })).not.toBeInTheDocument();
   });
 
   it('lists family members inside the 가족 초대 card', () => {

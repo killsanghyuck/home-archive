@@ -7,6 +7,13 @@ export const fallbackLibrary: LibraryHome = {
   family: [],
   providers: [
     {
+      id: 'mock-local',
+      kind: 'mock',
+      label: 'Mock AI (로컬)',
+      model: 'mock-family-summary-v1',
+      status: 'connected'
+    },
+    {
       id: 'claude-default',
       kind: 'claude',
       label: 'Claude',

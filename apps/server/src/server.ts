@@ -4,7 +4,9 @@ import type {
   HealthResponse,
   LibraryHome,
   LocalLibraryConfig,
-  UploadPhotoResponse
+  UploadPhotoResponse,
+  GenerateMonthlySummaryRequest,
+  GenerateMonthlySummaryResponse
 } from '@home-archive/shared';
 import { getLibraryHome } from './library-data.js';
 import { initLibraryConfig } from './local-library.js';
@@ -16,6 +18,7 @@ import {
   toUploadResponse,
   UploadError
 } from './photos.js';
+import { AiSummaryError, generateMonthlySummary } from './ai-summary.js';
 
 export interface BuildServerOptions {
   libraryConfig?: LocalLibraryConfig;
@@ -49,6 +52,21 @@ export async function buildServer(
   }));
 
   app.get('/api/library', async (): Promise<LibraryHome> => getLibraryHome(db));
+
+  app.post('/api/ai/monthly-summary', async (request, reply) => {
+    try {
+      const body = request.body as Partial<GenerateMonthlySummaryRequest> | undefined;
+      const summary: GenerateMonthlySummaryResponse = generateMonthlySummary(db, body?.month ?? '');
+      reply.code(201);
+      return summary;
+    } catch (err) {
+      if (err instanceof AiSummaryError) {
+        reply.code(err.statusCode);
+        return { error: err.message };
+      }
+      throw err;
+    }
+  });
 
   app.get('/api/photos/:id/original', async (request, reply) => {
     const { id } = request.params as { id: string };

@@ -43,11 +43,38 @@ CREATE TABLE IF NOT EXISTS ai_summaries (
   generated_at TEXT NOT NULL,
   title TEXT NOT NULL,
   body TEXT NOT NULL,
-  provider_id TEXT NOT NULL
+  provider_id TEXT NOT NULL,
+  provider_kind TEXT NOT NULL DEFAULT 'mock',
+  model TEXT NOT NULL DEFAULT 'mock-family-summary-v1',
+  prompt_version TEXT NOT NULL DEFAULT 'mock-monthly-summary-v1',
+  scope_type TEXT NOT NULL DEFAULT 'custom',
+  scope_id TEXT NOT NULL DEFAULT 'legacy',
+  photo_count INTEGER NOT NULL DEFAULT 0,
+  result_json TEXT NOT NULL DEFAULT '{}'
 );
 `;
 
 const DEFAULT_FAMILY_ID = 'family-default';
+
+const AI_SUMMARY_MIGRATIONS = [
+  ["provider_kind", "ALTER TABLE ai_summaries ADD COLUMN provider_kind TEXT NOT NULL DEFAULT 'mock'"],
+  ["model", "ALTER TABLE ai_summaries ADD COLUMN model TEXT NOT NULL DEFAULT 'mock-family-summary-v1'"],
+  ["prompt_version", "ALTER TABLE ai_summaries ADD COLUMN prompt_version TEXT NOT NULL DEFAULT 'mock-monthly-summary-v1'"],
+  ["scope_type", "ALTER TABLE ai_summaries ADD COLUMN scope_type TEXT NOT NULL DEFAULT 'custom'"],
+  ["scope_id", "ALTER TABLE ai_summaries ADD COLUMN scope_id TEXT NOT NULL DEFAULT 'legacy'"],
+  ["photo_count", "ALTER TABLE ai_summaries ADD COLUMN photo_count INTEGER NOT NULL DEFAULT 0"],
+  ["result_json", "ALTER TABLE ai_summaries ADD COLUMN result_json TEXT NOT NULL DEFAULT '{}'"],
+] as const;
+
+function migrate(db: HomeArchiveDb): void {
+  const columns = db.prepare('PRAGMA table_info(ai_summaries)').all() as Array<{ name: string }>;
+  const names = new Set(columns.map((column) => column.name));
+  for (const [name, sql] of AI_SUMMARY_MIGRATIONS) {
+    if (!names.has(name)) {
+      db.exec(sql);
+    }
+  }
+}
 
 function seed(db: HomeArchiveDb): void {
   const now = new Date().toISOString();
@@ -67,6 +94,7 @@ export function openDatabase(cfg: LocalLibraryConfig): HomeArchiveDb {
   db.pragma('journal_mode = WAL');
   db.pragma('foreign_keys = ON');
   db.exec(SCHEMA);
+  migrate(db);
   seed(db);
   return db;
 }

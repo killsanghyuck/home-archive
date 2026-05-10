@@ -1,4 +1,4 @@
-export type AiProviderKind = 'claude' | 'openai' | 'ollama';
+export type AiProviderKind = 'mock' | 'claude' | 'openai' | 'ollama';
 
 export type AiProviderStatus = 'connected' | 'disconnected' | 'error';
 

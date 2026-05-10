@@ -26,11 +26,27 @@ export function App(): JSX.Element {
     refresh();
   }, [refresh]);
 
+  const generateMonthlySummary = useCallback(
+    async (month: string) => {
+      const res = await fetch('/api/ai/monthly-summary', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ month })
+      });
+      if (!res.ok) {
+        throw new Error(`summary status ${res.status}`);
+      }
+      refresh();
+    },
+    [refresh]
+  );
+
   return (
     <HomePage
       library={library}
       loadError={loadError}
       onUploaded={() => refresh()}
+      onGenerateMonthlySummary={generateMonthlySummary}
     />
   );
 }

@@ -19,6 +19,8 @@
 - 원본/썸네일 이미지 API 제공
 - `exifr` 기반 EXIF 촬영일 추출
 - 실제 촬영일 기준 월/일 가족 타임라인
+- Mock AI Provider 기반 월별 가족 요약 생성
+- AI 요약 결과 SQLite 저장 및 홈 화면 표시
 - Vitest 테스트, TypeScript 빌드, ESLint 검증
 
 ## 모노레포 구성
@@ -77,6 +79,10 @@ pnpm lint     # ESLint 검사
   - WebP 썸네일 반환
 - `GET /api/photos/:id/original`
   - 원본 이미지 반환
+- `POST /api/ai/monthly-summary`
+  - Mock AI Provider로 월별 가족 요약 생성
+  - 결과를 SQLite `ai_summaries`에 저장
+  - 같은 월 요약을 다시 생성하면 기존 Mock 요약을 교체
 
 ### `POST /api/photos`
 

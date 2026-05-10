@@ -235,6 +235,11 @@ textarea {
   border: 1px solid rgba(119, 92, 69, 0.12);
 }
 
+.button--full {
+  width: 100%;
+  margin-top: 16px;
+}
+
 .hero-local-note {
   margin: 0;
   padding: 9px 12px;
