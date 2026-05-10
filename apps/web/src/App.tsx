@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { LibraryHome } from '@home-archive/shared';
-import { HomePage } from './pages/HomePage.js';
+import { HomePage, type HomePageView } from './pages/HomePage.js';
 import { fallbackLibrary } from './data/fallbackLibrary.js';
 
 export function App(): JSX.Element {
   const [library, setLibrary] = useState<LibraryHome>(fallbackLibrary);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [activePage, setActivePage] = useState<HomePageView>('home');
 
   const refresh = useCallback(() => {
     fetch('/api/library')
@@ -56,6 +57,8 @@ export function App(): JSX.Element {
     <HomePage
       library={library}
       loadError={loadError}
+      activePage={activePage}
+      onNavigate={setActivePage}
       onUploaded={() => refresh()}
       onGenerateMonthlySummary={generateMonthlySummary}
       onDeletePhoto={deletePhoto}

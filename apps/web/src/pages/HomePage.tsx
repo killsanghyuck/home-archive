@@ -1,14 +1,18 @@
 import type { CSSProperties } from 'react';
-import type { FamilyTimelineMonth, LibraryHome, UploadPhotoResponse } from '@home-archive/shared';
+import type { FamilyTimelineMonth, LibraryHome, PhotoSummary, UploadPhotoResponse } from '@home-archive/shared';
 import { RecentPhotosCard } from '../components/RecentPhotosCard.js';
 import { AiHighlightsCard } from '../components/AiHighlightsCard.js';
 import { FamilyInviteCard } from '../components/FamilyInviteCard.js';
 import { AiProvidersCard } from '../components/AiProvidersCard.js';
 import { UploadCard } from '../components/UploadCard.js';
 
+export type HomePageView = 'home' | 'photos';
+
 export interface HomePageProps {
   library: LibraryHome;
   loadError?: string | null;
+  activePage?: HomePageView;
+  onNavigate?: (page: HomePageView) => void;
   onUploaded?: (photo: UploadPhotoResponse) => void;
   onGenerateMonthlySummary?: (month: string) => Promise<void> | void;
   onDeletePhoto?: (photoId: string) => Promise<void> | void;
@@ -26,24 +30,6 @@ function PhotoTile({ tint = 0, label }: { tint?: number; label?: string }): JSX.
     <div className={`photo-tile photo-tile--${tint % 8}`} aria-hidden="true">
       {label ? <span className="photo-tile__label">{label}</span> : null}
     </div>
-  );
-}
-
-function HeroPreview(): JSX.Element {
-  return (
-    <section className="hero-preview" aria-label="이번 달 우리 가족 기록">
-      <div className="hero-preview__eyebrow">이번 달 우리 가족 기록</div>
-      <p className="hero-preview__body">
-        <strong>12장</strong>의 사진이 새로 올라왔고, AI가 그중{' '}
-        <em>4장</em>을 '엄마와 함께한 주말', <strong>3장</strong>을 '집에서 보낸 저녁'으로
-        정리했어요.
-      </p>
-      <div className="hero-preview__photos">
-        {[0, 3, 4, 1].map((t) => (
-          <PhotoTile key={t} tint={t} />
-        ))}
-      </div>
-    </section>
   );
 }
 
@@ -192,47 +178,138 @@ function CollectionsCard(): JSX.Element {
   );
 }
 
+function collectAllPhotos(library: LibraryHome): PhotoSummary[] {
+  const byId = new Map<string, PhotoSummary>();
+  for (const month of library.timelineMonths) {
+    for (const day of month.days) {
+      for (const photo of day.photos) {
+        byId.set(photo.id, photo);
+      }
+    }
+  }
+  for (const photo of library.recentPhotos) {
+    if (!byId.has(photo.id)) {
+      byId.set(photo.id, photo);
+    }
+  }
+  return Array.from(byId.values()).sort(
+    (a, b) => new Date(b.takenAt).getTime() - new Date(a.takenAt).getTime()
+  );
+}
+
+function photoLabel(photo: PhotoSummary): string {
+  return photo.caption || photo.place || '가족 사진';
+}
+
+function formatPhotoDate(photo: PhotoSummary): string {
+  return new Date(photo.takenAt).toLocaleDateString('ko-KR', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    weekday: 'short',
+    timeZone: 'UTC'
+  });
+}
+
+function FullPhotoListPage({
+  photos,
+  onDeletePhoto
+}: {
+  photos: PhotoSummary[];
+  onDeletePhoto?: (photoId: string) => Promise<void> | void;
+}): JSX.Element {
+  return (
+    <section className="card all-photos-page" aria-label="전체 사진">
+      <header className="all-photos-page__header">
+        <div>
+          <p className="card__eyebrow">사진 보관함</p>
+          <h1 className="card__title">전체 사진</h1>
+          <p className="card__empty">타임라인에 정리된 모든 가족 사진을 한곳에서 볼 수 있어요.</p>
+        </div>
+        <span className="chip chip--soft">총 {photos.length}장</span>
+      </header>
+
+      {photos.length === 0 ? (
+        <p className="card__empty">아직 올라온 사진이 없어요. 사진을 올리면 이곳에 전체 목록이 생겨요.</p>
+      ) : (
+        <div className="all-photo-grid">
+          {photos.map((photo) => {
+            const label = photoLabel(photo);
+            return (
+              <article key={photo.id} className="all-photo-card">
+                <a
+                  className="all-photo-card__image-link"
+                  href={`/api/photos/${photo.id}/original`}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label={`원본 보기: ${label}`}
+                >
+                  <img src={`/api/photos/${photo.id}/thumbnail`} alt={label} loading="lazy" />
+                </a>
+                <div className="all-photo-card__body">
+                  <strong>{label}</strong>
+                  <span>{formatPhotoDate(photo)}</span>
+                  {photo.place ? <span>{photo.place}</span> : null}
+                </div>
+                {onDeletePhoto ? (
+                  <button
+                    type="button"
+                    className="all-photo-card__delete"
+                    onClick={() => void onDeletePhoto(photo.id)}
+                    aria-label={`삭제: ${label}`}
+                  >
+                    삭제
+                  </button>
+                ) : null}
+              </article>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}
+
 export function HomePage({
   library,
   loadError,
+  activePage = 'home',
+  onNavigate,
   onUploaded,
   onGenerateMonthlySummary,
   onDeletePhoto
 }: HomePageProps): JSX.Element {
+  const allPhotos = collectAllPhotos(library);
+  const navigate = (page: HomePageView): void => {
+    onNavigate?.(page);
+  };
+
   return (
     <div className="workspace">
-      <header className="workspace__hero">
-        <nav className="workspace__topbar" aria-label="제품 정보">
+      <header className="workspace__header">
+        <nav className="workspace__topbar" aria-label="주요 페이지">
           <div className="workspace__brand">
             <span className="workspace__brand-mark">기</span>
-            <span className="workspace__wordmark">우리집 기록관</span>
+            <h1 className="workspace__wordmark">우리집 기록관</h1>
           </div>
-          <div className="workspace__chips">
-            <span className="chip chip--accent">로컬 우선</span>
-            <span className="chip">집 컴퓨터 설치형</span>
-            <span className="chip">{library.householdName}</span>
+          <div className="workspace__nav-actions">
+            <button
+              type="button"
+              className={`nav-tab ${activePage === 'home' ? 'nav-tab--active' : ''}`}
+              onClick={() => navigate('home')}
+            >
+              홈
+            </button>
+            <button
+              type="button"
+              className={`nav-tab ${activePage === 'photos' ? 'nav-tab--active' : ''}`}
+              onClick={() => navigate('photos')}
+            >
+              전체 사진
+            </button>
+            <a className="button button--accent button--compact" href="#upload-card">사진 올리기</a>
           </div>
         </nav>
-
-        <div className="hero-grid">
-          <div className="hero-copy">
-            <h1 className="workspace__title">
-              <span className="workspace__kicker">우리집 기록관</span>
-              사진은 각자의 폰에 흩어져 있지만, 기억은 한 가족 공간에 평생 쌓입니다.
-            </h1>
-            <p className="workspace__subtitle">
-              가족이 함께 사진을 올리면 AI가 시간, 사람, 장소별로 정리해줘요.
-            </p>
-            <div className="hero-actions" aria-label="주요 작업">
-              <a className="button button--accent" href="#upload-card">사진 올리기</a>
-              <a className="button button--secondary" href="#timeline-card">타임라인 보기</a>
-            </div>
-            <p className="hero-local-note">
-              사진과 메타데이터는 모두 이 집 컴퓨터에만 저장돼요. 외부 클라우드로 보내지 않습니다.
-            </p>
-          </div>
-          <HeroPreview />
-        </div>
       </header>
 
       {loadError ? (
@@ -241,28 +318,39 @@ export function HomePage({
         </div>
       ) : null}
 
-      <main className="workspace__grid">
-        <div className="workspace__primary">
-          <AiSummaryDesignCard photoCount={library.recentPhotos.length} />
-          <AiHighlightsCard
-            highlights={library.highlights}
-            latestMonth={library.timelineMonths[0]}
-            onGenerateMonthlySummary={onGenerateMonthlySummary}
-          />
-          <div id="timeline-card">
-            <TimelineCard months={library.timelineMonths} onDeletePhoto={onDeletePhoto} />
+      {activePage === 'photos' ? (
+        <main className="workspace__single">
+          <FullPhotoListPage photos={allPhotos} onDeletePhoto={onDeletePhoto} />
+          <aside className="workspace__side workspace__side--inline" aria-label="설정과 업로드">
+            <div id="upload-card">
+              <UploadCard onUploaded={(p) => onUploaded?.(p)} />
+            </div>
+          </aside>
+        </main>
+      ) : (
+        <main className="workspace__grid">
+          <div className="workspace__primary">
+            <AiSummaryDesignCard photoCount={library.recentPhotos.length} />
+            <AiHighlightsCard
+              highlights={library.highlights}
+              latestMonth={library.timelineMonths[0]}
+              onGenerateMonthlySummary={onGenerateMonthlySummary}
+            />
+            <div id="timeline-card">
+              <TimelineCard months={library.timelineMonths} onDeletePhoto={onDeletePhoto} />
+            </div>
+            <CollectionsCard />
+            <RecentPhotosCard photos={library.recentPhotos} />
           </div>
-          <CollectionsCard />
-          <RecentPhotosCard photos={library.recentPhotos} />
-        </div>
-        <aside className="workspace__side" aria-label="설정과 업로드">
-          <div id="upload-card">
-            <UploadCard onUploaded={(p) => onUploaded?.(p)} />
-          </div>
-          <FamilyInviteCard members={library.family} />
-          <AiProvidersCard providers={library.providers} />
-        </aside>
-      </main>
+          <aside className="workspace__side" aria-label="설정과 업로드">
+            <div id="upload-card">
+              <UploadCard onUploaded={(p) => onUploaded?.(p)} />
+            </div>
+            <FamilyInviteCard members={library.family} />
+            <AiProvidersCard providers={library.providers} />
+          </aside>
+        </main>
+      )}
 
       <footer className="workspace__footer">
         집 컴퓨터에 설치해 우리집 Wi-Fi 안에서만 동작하는 로컬 우선 가족 사진 저장소

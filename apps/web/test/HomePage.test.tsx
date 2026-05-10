@@ -184,12 +184,45 @@ describe('HomePage', () => {
     expect(within(card).getAllByText(/Claude/).length).toBeGreaterThan(0);
   });
 
-  it('uses the design-system landing copy and warm family archive tone', () => {
+  it('does not render the large landing hero section at the top', () => {
     render(<HomePage library={sampleLibrary} />);
     expect(
-      screen.getByText(/사진은 각자의 폰에 흩어져 있지만, 기억은 한 가족 공간에 평생 쌓입니다/)
-    ).toBeInTheDocument();
-    expect(screen.getByText(/AI가 시간, 사람, 장소별로 정리해줘요/)).toBeInTheDocument();
+      screen.queryByText(/사진은 각자의 폰에 흩어져 있지만, 기억은 한 가족 공간에 평생 쌓입니다/)
+    ).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/이번 달 우리 가족 기록/)).not.toBeInTheDocument();
+    expect(screen.getByRole('navigation', { name: /주요 페이지/ })).toBeInTheDocument();
+  });
+
+  it('renders a full photo list page with every family photo', () => {
+    render(<HomePage library={sampleLibrary} activePage="photos" />);
+    const page = screen.getByRole('region', { name: /전체 사진/ });
+
+    expect(within(page).getByRole('heading', { name: /전체 사진/ })).toBeInTheDocument();
+    expect(within(page).getByText(/총 2장/)).toBeInTheDocument();
+    expect(within(page).getByRole('img', { name: /연말 가족 사진/ })).toHaveAttribute(
+      'src',
+      '/api/photos/photo-1/thumbnail'
+    );
+    expect(within(page).getByRole('img', { name: /새해 카운트다운 준비/ })).toHaveAttribute(
+      'src',
+      '/api/photos/photo-2/thumbnail'
+    );
+    expect(within(page).getByRole('link', { name: /원본 보기: 새해 카운트다운 준비/ })).toHaveAttribute(
+      'href',
+      '/api/photos/photo-2/original'
+    );
+  });
+
+  it('lets the user delete a photo from the full photo list page', async () => {
+    const user = userEvent.setup();
+    const onDeletePhoto = vi.fn().mockResolvedValue(undefined);
+
+    render(<HomePage library={sampleLibrary} activePage="photos" onDeletePhoto={onDeletePhoto} />);
+    const page = screen.getByRole('region', { name: /전체 사진/ });
+
+    await user.click(within(page).getByRole('button', { name: /삭제: 연말 가족 사진/ }));
+
+    expect(onDeletePhoto).toHaveBeenCalledWith('photo-1');
   });
 
   it('renders the actual family timeline from uploaded photo taken dates', () => {
