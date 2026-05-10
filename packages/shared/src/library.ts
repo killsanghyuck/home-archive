@@ -33,6 +33,7 @@ export interface FamilyTimelineDay {
   photoCount: number;
   place?: string;
   coverPhotoIds: string[];
+  photos: PhotoSummary[];
 }
 
 export interface FamilyTimelineMonth {

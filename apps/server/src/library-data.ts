@@ -101,7 +101,8 @@ function buildTimelineMonths(rows: PhotoRow[]): FamilyTimelineMonth[] {
             title: firstMeaningfulTitle(dayBucket.rows),
             photoCount: dayBucket.rows.length,
             place,
-            coverPhotoIds: dayBucket.rows.slice(0, 4).map((r) => r.id)
+            coverPhotoIds: dayBucket.rows.slice(0, 4).map((r) => r.id),
+            photos: dayBucket.rows.map(rowToPhotoSummary)
           };
         });
 

@@ -1,4 +1,4 @@
-import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { createHash, randomUUID } from 'node:crypto';
 import path from 'node:path';
 import exifr from 'exifr';
@@ -272,6 +272,34 @@ export async function getPhotoMedia(
   } catch {
     return null;
   }
+}
+
+export async function deletePhoto(
+  cfg: LocalLibraryConfig,
+  db: HomeArchiveDb,
+  photoId: string
+): Promise<boolean> {
+  const row = db
+    .prepare('SELECT * FROM photos WHERE id = ?')
+    .get(photoId) as PhotoRow | undefined;
+  if (!row) return false;
+
+  db.prepare('DELETE FROM photos WHERE id = ?').run(photoId);
+
+  const root = path.resolve(cfg.rootDir);
+  const candidatePaths = [row.original_path, row.thumbnail_path].filter(
+    (value): value is string => Boolean(value)
+  );
+
+  await Promise.all(
+    candidatePaths.map(async (filePath) => {
+      const resolved = path.resolve(filePath);
+      if (!resolved.startsWith(`${root}${path.sep}`)) return;
+      await rm(resolved, { force: true }).catch(() => undefined);
+    })
+  );
+
+  return true;
 }
 
 export class UploadError extends Error {

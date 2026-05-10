@@ -19,6 +19,8 @@
 - 원본/썸네일 이미지 API 제공
 - `exifr` 기반 EXIF 촬영일 추출
 - 실제 촬영일 기준 월/일 가족 타임라인
+- 타임라인 날짜별 사진 목록/원본 보기
+- 사진 삭제 API/UX와 로컬 원본·썸네일 파일 정리
 - Mock AI Provider 기반 월별 가족 요약 생성
 - AI 요약 결과 SQLite 저장 및 홈 화면 표시
 - Vitest 테스트, TypeScript 빌드, ESLint 검증
@@ -73,12 +75,16 @@ pnpm lint     # ESLint 검사
   - 가족 홈 데이터
   - 최근 사진
   - 실제 촬영일 기준 `timelineMonths`
+  - 타임라인 날짜별 `photos` 목록
 - `POST /api/photos`
   - 사진 업로드
 - `GET /api/photos/:id/thumbnail`
   - WebP 썸네일 반환
 - `GET /api/photos/:id/original`
   - 원본 이미지 반환
+- `DELETE /api/photos/:id`
+  - 사진 DB row 삭제
+  - 로컬 원본/썸네일 파일 삭제
 - `POST /api/ai/monthly-summary`
   - Mock AI Provider로 월별 가족 요약 생성
   - 결과를 SQLite `ai_summaries`에 저장

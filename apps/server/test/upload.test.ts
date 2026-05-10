@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { mkdtemp, rm, readFile, stat } from 'node:fs/promises';
+import { mkdtemp, rm, readFile, stat, access } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { FastifyInstance } from 'fastify';
@@ -324,6 +324,54 @@ describe('POST /api/photos', () => {
     expect(thumbnail.statusCode).toBe(200);
     expect(thumbnail.headers['content-type']).toContain('image/webp');
     expect(thumbnail.rawPayload.subarray(0, 4).toString('ascii')).toBe('RIFF');
+  });
+
+  it('deletes a photo row and removes its local original and thumbnail files', async () => {
+    const boundary = '----xboundaryDelete';
+    const body = multipart(
+      boundary,
+      { uploadedBy: '엄마', memo: '삭제할 사진', takenAt: '2026-05-09T10:00:00Z' },
+      {
+        name: 'photo',
+        filename: 'delete-source.png',
+        mime: 'image/png',
+        data: tinyPng
+      }
+    );
+
+    const upload = await app.inject({
+      method: 'POST',
+      url: '/api/photos',
+      headers: { 'content-type': `multipart/form-data; boundary=${boundary}` },
+      payload: body
+    });
+    expect(upload.statusCode).toBe(201);
+    const uploaded = upload.json();
+    await expect(access(uploaded.originalPath)).resolves.toBeUndefined();
+    await expect(access(uploaded.thumbnailPath)).resolves.toBeUndefined();
+
+    const res = await app.inject({
+      method: 'DELETE',
+      url: `/api/photos/${uploaded.id}`
+    });
+    expect(res.statusCode).toBe(204);
+
+    const row = db.prepare('SELECT id FROM photos WHERE id = ?').get(uploaded.id);
+    expect(row).toBeUndefined();
+    await expect(access(uploaded.originalPath)).rejects.toThrow();
+    await expect(access(uploaded.thumbnailPath)).rejects.toThrow();
+
+    const lib = await app.inject({ method: 'GET', url: '/api/library' });
+    expect(lib.statusCode).toBe(200);
+    expect(lib.json().recentPhotos.some((p: { id: string }) => p.id === uploaded.id)).toBe(false);
+  });
+
+  it('returns 404 when deleting a missing photo', async () => {
+    const res = await app.inject({
+      method: 'DELETE',
+      url: '/api/photos/photo-missing'
+    });
+    expect(res.statusCode).toBe(404);
   });
 
   it('returns 404 for missing photo media', async () => {

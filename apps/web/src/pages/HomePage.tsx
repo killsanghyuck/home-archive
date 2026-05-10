@@ -11,6 +11,7 @@ export interface HomePageProps {
   loadError?: string | null;
   onUploaded?: (photo: UploadPhotoResponse) => void;
   onGenerateMonthlySummary?: (month: string) => Promise<void> | void;
+  onDeletePhoto?: (photoId: string) => Promise<void> | void;
 }
 
 const collections = [
@@ -65,9 +66,17 @@ function AiSummaryDesignCard({ photoCount }: { photoCount: number }): JSX.Elemen
   );
 }
 
-function TimelineCard({ months }: { months: FamilyTimelineMonth[] }): JSX.Element {
+function TimelineCard({
+  months,
+  onDeletePhoto
+}: {
+  months: FamilyTimelineMonth[];
+  onDeletePhoto?: (photoId: string) => Promise<void> | void;
+}): JSX.Element {
   const totalPhotos = months.reduce((sum, month) => sum + month.photoCount, 0);
   const totalDays = months.reduce((sum, month) => sum + month.dayCount, 0);
+  const photoLabel = (photo: FamilyTimelineMonth['days'][number]['photos'][number]): string =>
+    photo.caption || photo.place || '가족 사진';
 
   return (
     <section className="card card--timeline" aria-label="우리집 타임라인">
@@ -104,6 +113,42 @@ function TimelineCard({ months }: { months: FamilyTimelineMonth[] }): JSX.Elemen
                     <p className="timeline-entry__note">
                       업로드 날짜가 아니라 사진 속 EXIF 촬영일 기준으로 정리했어요.
                     </p>
+                    <div className="timeline-photo-list" aria-label={`${day.label} 사진 목록`}>
+                      {day.photos.map((photo) => {
+                        const label = photoLabel(photo);
+                        return (
+                          <article key={photo.id} className="timeline-photo-item">
+                            <a
+                              className="timeline-photo-item__image-link"
+                              href={`/api/photos/${photo.id}/original`}
+                              target="_blank"
+                              rel="noreferrer"
+                              aria-label={`원본 보기: ${label}`}
+                            >
+                              <img
+                                src={`/api/photos/${photo.id}/thumbnail`}
+                                alt={label}
+                                loading="lazy"
+                              />
+                            </a>
+                            <div className="timeline-photo-item__meta">
+                              <strong>{label}</strong>
+                              <span>{photo.place ? `${photo.place} · ` : ''}{new Date(photo.takenAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })}</span>
+                            </div>
+                            {onDeletePhoto ? (
+                              <button
+                                type="button"
+                                className="timeline-photo-item__delete"
+                                onClick={() => void onDeletePhoto(photo.id)}
+                                aria-label={`삭제: ${label}`}
+                              >
+                                삭제
+                              </button>
+                            ) : null}
+                          </article>
+                        );
+                      })}
+                    </div>
                   </div>
                 </article>
               ))
@@ -151,7 +196,8 @@ export function HomePage({
   library,
   loadError,
   onUploaded,
-  onGenerateMonthlySummary
+  onGenerateMonthlySummary,
+  onDeletePhoto
 }: HomePageProps): JSX.Element {
   return (
     <div className="workspace">
@@ -204,7 +250,7 @@ export function HomePage({
             onGenerateMonthlySummary={onGenerateMonthlySummary}
           />
           <div id="timeline-card">
-            <TimelineCard months={library.timelineMonths} />
+            <TimelineCard months={library.timelineMonths} onDeletePhoto={onDeletePhoto} />
           </div>
           <CollectionsCard />
           <RecentPhotosCard photos={library.recentPhotos} />

@@ -13,6 +13,7 @@ import { initLibraryConfig } from './local-library.js';
 import { openDatabase, type HomeArchiveDb } from './db.js';
 import {
   ALLOWED_PHOTO_MIME,
+  deletePhoto,
   getPhotoMedia,
   savePhoto,
   toUploadResponse,
@@ -76,6 +77,17 @@ export async function buildServer(
       return { error: 'photo not found' };
     }
     return reply.type(media.mimeType).send(media.bytes);
+  });
+
+  app.delete('/api/photos/:id', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const deleted = await deletePhoto(cfg, db, id);
+    if (!deleted) {
+      reply.code(404);
+      return { error: 'photo not found' };
+    }
+    reply.code(204);
+    return undefined;
   });
 
   app.get('/api/photos/:id/thumbnail', async (request, reply) => {

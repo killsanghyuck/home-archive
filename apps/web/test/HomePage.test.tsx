@@ -56,6 +56,14 @@ const sampleLibrary: LibraryHome = {
           caption: '연말 가족 사진',
           people: [],
           place: '거실'
+        },
+        {
+          id: 'photo-2',
+          takenAt: '2024-12-31T14:00:00.000Z',
+          thumbnailPath: '/thumbs/2.jpg',
+          caption: '새해 카운트다운 준비',
+          people: [],
+          place: '거실'
         }
       ],
       days: [
@@ -65,7 +73,25 @@ const sampleLibrary: LibraryHome = {
           title: '연말 가족 사진',
           photoCount: 2,
           place: '거실',
-          coverPhotoIds: ['photo-1']
+          coverPhotoIds: ['photo-1', 'photo-2'],
+          photos: [
+            {
+              id: 'photo-1',
+              takenAt: '2024-12-31T12:34:56.000Z',
+              thumbnailPath: '/thumbs/1.jpg',
+              caption: '연말 가족 사진',
+              people: [],
+              place: '거실'
+            },
+            {
+              id: 'photo-2',
+              takenAt: '2024-12-31T14:00:00.000Z',
+              thumbnailPath: '/thumbs/2.jpg',
+              caption: '새해 카운트다운 준비',
+              people: [],
+              place: '거실'
+            }
+          ]
         }
       ]
     }
@@ -172,8 +198,33 @@ describe('HomePage', () => {
     expect(within(card).getByText(/언제 무슨 일이 있었는지/)).toBeInTheDocument();
     expect(within(card).getByText(/2024년 12월/)).toBeInTheDocument();
     expect(within(card).getByText(/12월 31일/)).toBeInTheDocument();
-    expect(within(card).getByText(/연말 가족 사진/)).toBeInTheDocument();
+    expect(within(card).getAllByText(/연말 가족 사진/).length).toBeGreaterThan(0);
     expect(within(card).getByText(/사진 2장/)).toBeInTheDocument();
+  });
+
+  it('renders timeline day photo lists with thumbnails and original links', () => {
+    render(<HomePage library={sampleLibrary} />);
+    const card = screen.getByRole('region', { name: /우리집 타임라인/ });
+
+    const firstImage = within(card).getByRole('img', { name: /연말 가족 사진/ });
+    expect(firstImage).toHaveAttribute('src', '/api/photos/photo-1/thumbnail');
+    expect(within(card).getByRole('link', { name: /원본 보기: 연말 가족 사진/ })).toHaveAttribute(
+      'href',
+      '/api/photos/photo-1/original'
+    );
+    expect(within(card).getByText(/새해 카운트다운 준비/)).toBeInTheDocument();
+  });
+
+  it('lets the user delete a photo from the timeline list', async () => {
+    const user = userEvent.setup();
+    const onDeletePhoto = vi.fn().mockResolvedValue(undefined);
+
+    render(<HomePage library={sampleLibrary} onDeletePhoto={onDeletePhoto} />);
+    const card = screen.getByRole('region', { name: /우리집 타임라인/ });
+
+    await user.click(within(card).getByRole('button', { name: /삭제: 새해 카운트다운 준비/ }));
+
+    expect(onDeletePhoto).toHaveBeenCalledWith('photo-2');
   });
 
   it('renders AI collection cards with design-system tag labels', () => {

@@ -41,12 +41,24 @@ export function App(): JSX.Element {
     [refresh]
   );
 
+  const deletePhoto = useCallback(
+    async (photoId: string) => {
+      const res = await fetch(`/api/photos/${photoId}`, { method: 'DELETE' });
+      if (!res.ok) {
+        throw new Error(`delete status ${res.status}`);
+      }
+      refresh();
+    },
+    [refresh]
+  );
+
   return (
     <HomePage
       library={library}
       loadError={loadError}
       onUploaded={() => refresh()}
       onGenerateMonthlySummary={generateMonthlySummary}
+      onDeletePhoto={deletePhoto}
     />
   );
 }
